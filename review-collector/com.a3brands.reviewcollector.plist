@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  macOS launchd agent. Starts the collector at login and restarts it if it exits.
+
+  1. Replace /Users/CHANGEME/review-collector with this folder's real path
+     (run `pwd` here to get it).
+  2. cp com.a3brands.reviewcollector.plist ~/Library/LaunchAgents/
+  3. launchctl load ~/Library/LaunchAgents/com.a3brands.reviewcollector.plist
+  4. launchctl start com.a3brands.reviewcollector
+
+  Stop with:
+     launchctl unload ~/Library/LaunchAgents/com.a3brands.reviewcollector.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.a3brands.reviewcollector</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/CHANGEME/review-collector/.venv/bin/python</string>
+        <string>-m</string>
+        <string>uvicorn</string>
+        <string>app.main:app</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>8080</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/CHANGEME/review-collector</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/CHANGEME/review-collector/logs/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/CHANGEME/review-collector/logs/launchd.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

@@ -1,0 +1,73 @@
+# A3 Review Collector -- Linux systemd unit.
+#
+#   sudo cp deploy/review-collector.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now review-collector
+#
+# This replaces com.a3brands.reviewcollector.plist, and the difference is the
+# entire point of VERSION 2. The launchd agent used RunAtLoad, which fires when
+# a user logs in -- so the collector only ran while someone was logged into the
+# laptop with the lid open. WantedBy=multi-user.target fires at boot, before
+# and without any login, on a machine that is never closed.
+#
+# The fifteen minute schedule stays where it is: inside this process, in
+# APScheduler. systemd's job is to guarantee the process exists, not to
+# re-implement a scheduler that already handles overlap, misfires and the
+# adaptive per-dealership cadence that cron cannot express.
+
+[Unit]
+Description=A3 Review Collector (Google review scraping, notification and sync)
+Documentation=file:///opt/review-collector/README.md
+# network-online, not just network: Playwright resolving www.google.com the
+# instant the interface appears but before DNS is up is a failed first check.
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=a3
+Group=a3
+WorkingDirectory=/opt/review-collector
+ExecStart=/opt/review-collector/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8080
+
+# 127.0.0.1, not 0.0.0.0. The collector's admin API can trigger checks and read
+# every review, and nothing outside this machine needs to reach it directly:
+# the Responder talks to it over loopback, and you reach it through
+# `tailscale serve`, which terminates on the tailnet and never on the public
+# internet. Binding 0.0.0.0 would put it on the VM's public IP as plain HTTP.
+
+EnvironmentFile=/opt/review-collector/.env
+# Relative-date parsing ("2 weeks ago") resolves against the process timezone.
+# Pinning it means a server in any region reads the same review dates the
+# laptop did, and PLAYWRIGHT_TIMEZONE in .env agrees with it.
+Environment=TZ=America/Chicago
+Environment=PYTHONUNBUFFERED=1
+
+Restart=always
+RestartSec=10
+# A crash loop caused by a bad .env should stop and stay stopped rather than
+# hammering Google from a machine that cannot possibly succeed.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=review-collector
+
+# Chromium is a browser being pointed at the open internet. It gets no more of
+# this machine than it needs.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/opt/review-collector/data /opt/review-collector/logs
+
+# Headless Chromium is the memory-hungry part of this service; a runaway page
+# should be killed rather than take the Responder and Postgres down with it.
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

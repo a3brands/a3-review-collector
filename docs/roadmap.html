@@ -1,0 +1,563 @@
+<title>Review Responder Roadmap</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ground:#faf9f5;
+    --surface:#ffffff;
+    --surface-2:#f3f2ec;
+    --text:#16201b;
+    --text-2:#4a5751;
+    --text-3:#77837c;
+    --border:#e2e4dd;
+    --border-2:#cfd4cb;
+    --brand:#1f5e45;
+    --brand-soft:#e7f0eb;
+    --done:#2c7a55;
+    --done-soft:#e4f1ea;
+    --hold:#a86d16;
+    --hold-soft:#f8efe0;
+    --risk:#9d2f28;
+    --risk-soft:#f9e9e7;
+    --shadow:0 1px 2px rgba(22,32,27,.05), 0 8px 24px -18px rgba(22,32,27,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#11150f;
+      --surface:#181d16;
+      --surface-2:#20261e;
+      --text:#e9ece5;
+      --text-2:#b3bcaf;
+      --text-3:#8b968a;
+      --border:#2a3128;
+      --border-2:#3a4337;
+      --brand:#6cb493;
+      --brand-soft:#1b2a23;
+      --done:#6cb493;
+      --done-soft:#1b2a23;
+      --hold:#d8a45c;
+      --hold-soft:#2a2317;
+      --risk:#e08b83;
+      --risk-soft:#2c1a18;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#11150f;
+    --surface:#181d16;
+    --surface-2:#20261e;
+    --text:#e9ece5;
+    --text-2:#b3bcaf;
+    --text-3:#8b968a;
+    --border:#2a3128;
+    --border-2:#3a4337;
+    --brand:#6cb493;
+    --brand-soft:#1b2a23;
+    --done:#6cb493;
+    --done-soft:#1b2a23;
+    --hold:#d8a45c;
+    --hold-soft:#2a2317;
+    --risk:#e08b83;
+    --risk-soft:#2c1a18;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--text);
+    font:400 16px/1.62 "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--brand)}
+  a:focus-visible, summary:focus-visible{outline:2px solid var(--brand); outline-offset:3px; border-radius:3px}
+
+  .wrap{max-width:900px; margin:0 auto; padding:0 28px}
+
+  header.top{border-bottom:1px solid var(--border); background:var(--surface)}
+  header.top .wrap{padding-top:36px; padding-bottom:28px; display:flex; flex-direction:column; gap:13px}
+  .mono{font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace}
+  .eyebrow{
+    font:500 12px/1 "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--text-3);
+  }
+  h1{
+    font:600 clamp(2rem,4.2vw,2.8rem)/1.1 "Newsreader", Georgia, serif;
+    margin:0; letter-spacing:-.015em; text-wrap:balance;
+  }
+  .standfirst{margin:0; max-width:64ch; color:var(--text-2); font-size:1.05rem}
+
+  main{padding-bottom:80px}
+  section{padding-top:52px}
+  h2{font:600 1.55rem/1.25 "Newsreader", Georgia, serif; margin:0 0 6px; letter-spacing:-.01em}
+  .sectionnote{margin:0 0 22px; color:var(--text-2); max-width:66ch}
+  h3{font:600 1.02rem/1.4 "IBM Plex Sans", sans-serif; margin:0 0 6px}
+  p{margin:0 0 14px; max-width:70ch}
+  ul{margin:0 0 14px; padding-left:20px; max-width:70ch}
+  li{margin-bottom:6px}
+
+  /* Status strip: the four demo requirements, encoded as state not prose. */
+  .status{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:8px}
+  .st{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; box-shadow:var(--shadow)}
+  .st .n{font:500 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing:.12em; color:var(--text-3)}
+  .st .t{font-weight:600; margin:8px 0 9px; font-size:.97rem; line-height:1.35}
+  .pill{
+    display:inline-block; font:500 11px/1 "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing:.08em; text-transform:uppercase; padding:5px 9px; border-radius:20px;
+  }
+  .pill.done{background:var(--done-soft); color:var(--done)}
+  .pill.open{background:var(--hold-soft); color:var(--hold)}
+  .pill.risk{background:var(--risk-soft); color:var(--risk)}
+
+  /* Phases are numbered because they are genuinely ordered: each one is
+     unbuildable until the one above it lands. */
+  .phases{display:flex; flex-direction:column; gap:16px}
+  .phase{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; box-shadow:var(--shadow);
+  }
+  .phase > .head{
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+    padding:15px 20px; border-bottom:1px solid var(--border); background:var(--surface-2);
+  }
+  .phase .idx{
+    font:500 12px/1 "IBM Plex Mono", ui-monospace, monospace;
+    color:var(--brand); letter-spacing:.1em;
+  }
+  .phase .name{font-weight:600; font-size:1.02rem; flex:1; min-width:180px}
+  .phase .est{
+    font:500 11px/1 "IBM Plex Mono", ui-monospace, monospace;
+    color:var(--text-3); letter-spacing:.06em; white-space:nowrap;
+  }
+  .phase .inner{padding:17px 20px}
+  .phase .inner > *:last-child{margin-bottom:0}
+  .why{
+    margin:0 0 12px; padding-left:13px; border-left:2px solid var(--border-2);
+    color:var(--text-2); font-size:.94rem; max-width:70ch;
+  }
+  .deliv{
+    font:500 11px/1 "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--text-3);
+    margin:0 0 8px;
+  }
+
+  .tablewrap{overflow-x:auto; border:1px solid var(--border); border-radius:11px; background:var(--surface); margin-bottom:18px; box-shadow:var(--shadow)}
+  table{width:100%; border-collapse:collapse; font-size:.91rem; font-variant-numeric:tabular-nums}
+  th,td{padding:11px 15px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  th{
+    font:500 11px/1.4 "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); background:var(--surface-2);
+  }
+  td.pick{font-weight:600}
+  .yes{color:var(--done); font-weight:600}
+  .no{color:var(--risk); font-weight:600}
+
+  .callout{
+    border-left:3px solid var(--hold); background:var(--hold-soft);
+    padding:14px 18px; border-radius:0 8px 8px 0; margin:0 0 18px; max-width:70ch;
+  }
+  .callout.risk{border-left-color:var(--risk); background:var(--risk-soft)}
+  .callout.good{border-left-color:var(--done); background:var(--done-soft)}
+  .callout .k{
+    display:block; font:500 11px/1 "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); margin-bottom:7px;
+  }
+  .callout p:last-child, .callout ul:last-child{margin-bottom:0}
+
+  footer{border-top:1px solid var(--border); margin-top:60px}
+  footer .wrap{padding:24px 28px 56px; color:var(--text-3); font-size:.85rem; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap}
+
+  @media (max-width:640px){
+    .phase .est{width:100%}
+  }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <span class="eyebrow">A3 Brands · Review Responder · Plan, 2 September 2026</span>
+    <h1>From two dealerships to a product</h1>
+    <p class="standfirst">
+      What the demo asked for, what is actually standing in the way, and the order
+      the work has to happen in. Nothing here is built yet — this is the plan to
+      argue with.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="status">
+    <h2>The five requirements</h2>
+    <p class="sectionnote">Where each one stands today.</p>
+    <div class="status">
+      <div class="st">
+        <div class="n">01</div>
+        <div class="t">Business Profile link in the email</div>
+        <span class="pill done">Done</span>
+      </div>
+      <div class="st">
+        <div class="n">02</div>
+        <div class="t">Customer user guide</div>
+        <span class="pill done">Done</span>
+      </div>
+      <div class="st">
+        <div class="n">03</div>
+        <div class="t">Fix bugs, support thousands of customers</div>
+        <span class="pill open">Planned below</span>
+      </div>
+      <div class="st">
+        <div class="n">04</div>
+        <div class="t">A real server before launch</div>
+        <span class="pill open">Decision needed</span>
+      </div>
+      <div class="st">
+        <div class="n">05</div>
+        <div class="t">Project management</div>
+        <span class="pill done">Owned by Rhea</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="today">
+    <h2>Where the system actually is</h2>
+    <p>
+      There are two programs. The <strong>Collector</strong> (Python) watches
+      listings and stores reviews in SQLite. The <strong>Responder</strong> (Node)
+      drafts replies, runs the dashboard, and sends the approval emails. The
+      Collector pushes new reviews into the Responder.
+    </p>
+    <p>
+      Both work. Both are shaped for exactly two dealerships, and neither of them
+      is shaped for a customer who is not A3.
+    </p>
+
+    <div class="callout risk">
+      <span class="k">The one that is not a scaling problem</span>
+      <p>
+        A single shared username and password guards the whole dashboard. Any
+        customer given a login can read every other customer's reviews and
+        performance figures. With two friendly dealerships that is untidy; with
+        paying customers it is a breach. This is why per-customer login sits in
+        the first phase rather than a later one.
+      </p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>What caps it</th><th>Where</th><th>Effect at scale</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="pick">Hardcoded dealers</td>
+            <td>Responder <span class="mono">DEALERS</span> array; Collector <span class="mono">Settings</span> fields and slug maps</td>
+            <td>Every new customer is a code change and a redeploy</td>
+          </tr>
+          <tr>
+            <td class="pick">Per-dealer secrets in env vars</td>
+            <td>Names suffixed <span class="mono">_BMW_FWB</span>, <span class="mono">_MB_FWB</span></td>
+            <td>Onboarding cannot be self-serve, or delegated to anyone but a developer</td>
+          </tr>
+          <tr>
+            <td class="pick">One shared dashboard password</td>
+            <td>Responder HTTP Basic auth</td>
+            <td>No isolation between customers — cannot be sold as-is</td>
+          </tr>
+          <tr>
+            <td class="pick">Approvals in a shared JSON file</td>
+            <td>Responder <span class="mono">pending-replies.js</span>, <span class="mono">approved-replies.js</span></td>
+            <td>Whole-file read-modify-write with no locking — concurrent approvals clobber each other, and the file is machine-local</td>
+          </tr>
+          <tr>
+            <td class="pick">Reviews as JSON files</td>
+            <td>One file per dealer per platform, parsed whole per request</td>
+            <td>Dashboard slows with review count, and gets slower with every customer</td>
+          </tr>
+          <tr>
+            <td class="pick">Collection by browser scraping</td>
+            <td>Collector Playwright backend</td>
+            <td>The hard ceiling. A real browser per listing does not reach thousands</td>
+          </tr>
+          <tr>
+            <td class="pick">Runs on a laptop</td>
+            <td>launchd agents, tunnel for the public URL</td>
+            <td>Stops when the lid closes. Requirement 4</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="phases">
+    <h2>The work, in order</h2>
+    <p class="sectionnote">
+      Each phase is buildable only once the one above it lands. Estimates are
+      developer-days for one person who knows this codebase, and exclude review
+      and client turnaround.
+    </p>
+
+    <div class="phases">
+
+      <div class="phase">
+        <div class="head">
+          <span class="idx">P0</span>
+          <span class="name">Clear the deck</span>
+          <span class="est">2–3 days</span>
+        </div>
+        <div class="inner">
+          <p class="why">
+            Refactoring on top of a suite that is already failing means never knowing
+            which breakage you caused. This is the cheapest phase and it makes every
+            later one measurable.
+          </p>
+          <p class="deliv">Deliverables</p>
+          <ul>
+            <li>Green test suites in both repos, run automatically rather than by hand.</li>
+            <li>A written triage of every known bug, so "fix the issues" has a definition and an end.</li>
+            <li>An error report that reaches a person — right now a failure is only visible in a log file on the laptop.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="head">
+          <span class="idx">P1</span>
+          <span class="name">Customers live in the database</span>
+          <span class="est">5–8 days</span>
+        </div>
+        <div class="inner">
+          <p class="why">
+            This is the phase that turns the system from an installation into a
+            product. Until a customer can be added by filling in a form, the ceiling
+            is however many redeploys you are willing to do.
+          </p>
+          <p class="deliv">Deliverables</p>
+          <ul>
+            <li>A <strong>customers</strong> table holding name, locations, profile URL, place ID, notification addresses and approver — everything currently hardcoded or in env vars.</li>
+            <li>Per-customer credentials stored encrypted, not as environment variables.</li>
+            <li>An admin screen to add a customer, edit one, and switch one off — no redeploy.</li>
+            <li>A migration that moves the two existing dealerships in with no change to what they see.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="head">
+          <span class="idx">P2</span>
+          <span class="name">Per-customer login and isolation</span>
+          <span class="est">3–5 days</span>
+        </div>
+        <div class="inner">
+          <p class="why">
+            The breach described above. It has to be closed before a single
+            non-A3 customer is given a login, which makes it the true gate on
+            selling anything.
+          </p>
+          <p class="deliv">Deliverables</p>
+          <ul>
+            <li>Real accounts with per-customer passwords, replacing shared Basic auth.</li>
+            <li>Every query scoped to the signed-in customer, enforced in one place rather than route by route.</li>
+            <li>An A3 staff role that can see across customers, deliberately and visibly.</li>
+            <li>A test that proves customer A gets a 404 on customer B's review.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="head">
+          <span class="idx">P3</span>
+          <span class="name">State that survives a restart</span>
+          <span class="est">3–4 days</span>
+        </div>
+        <div class="inner">
+          <p class="why">
+            Pending and approved replies already survive a restart — they are
+            written to disk, not held in memory. What they do not survive is
+            concurrency: each write reads the whole JSON file, edits it and writes
+            it back with no locking, so two approvals landing together lose one.
+            The file is also local to one machine, which caps the app at a single
+            process however large the server is.
+          </p>
+          <p class="deliv">Deliverables</p>
+          <ul>
+            <li>Pending and approved replies moved from JSON files into the database, where a write is atomic.</li>
+            <li>Reviews served from the database rather than parsed out of JSON files, with paging and indexes.</li>
+            <li>SQLite to Postgres, which is also what makes more than one process possible.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="head">
+          <span class="idx">P4</span>
+          <span class="name">Collection that reaches thousands</span>
+          <span class="est">5–10 days · blocked</span>
+        </div>
+        <div class="inner">
+          <p class="why">
+            The genuine ceiling, and the one phase that is not purely a matter of
+            effort. Driving a real browser per listing every 15 minutes does not
+            reach thousands of customers at any price.
+          </p>
+          <p class="deliv">Deliverables</p>
+          <ul>
+            <li>Google Business Profile API as the primary backend — one authorised call per location instead of a rendered page.</li>
+            <li>A work queue with per-customer scheduling, so checks spread across the hour instead of running as one loop.</li>
+            <li>Check frequency tied to how often a listing actually changes, rather than every listing every 15 minutes.</li>
+            <li>Scraping kept only as the fallback for platforms with no API.</li>
+          </ul>
+          <div class="callout risk">
+            <span class="k">Blocked, and not by us</span>
+            <p>
+              GBP API access is still pending, along with the mailbox and DNS, on one
+              outstanding IT request. This phase cannot start until that clears, and
+              it is on the critical path to launch — which makes chasing it the
+              highest-value thing on this page that is not writing code.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="head">
+          <span class="idx">P5</span>
+          <span class="name">The server</span>
+          <span class="est">3–5 days</span>
+        </div>
+        <div class="inner">
+          <p class="why">
+            Requirement 4. Deliberately after P1–P3: moving the current
+            two-dealer shape onto a server means doing the move twice, and the
+            second move is the one with customers watching.
+          </p>
+          <p class="deliv">Deliverables</p>
+          <ul>
+            <li>Both services running as managed services that restart on their own, on a stable public hostname with a real certificate.</li>
+            <li>Nightly database backups, tested by restoring one.</li>
+            <li>Deploy from a repository, not by copying files.</li>
+            <li>Uptime and error alerting that reaches a phone.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="head">
+          <span class="idx">P6</span>
+          <span class="name">Onboarding and running it</span>
+          <span class="est">4–6 days</span>
+        </div>
+        <div class="inner">
+          <p class="why">
+            The difference between a system that can hold thousands of customers and
+            a business that can actually sign them. Every step here is one a
+            developer currently has to perform by hand.
+          </p>
+          <p class="deliv">Deliverables</p>
+          <ul>
+            <li>A guided flow that takes a new dealership from Google authorisation to first collected review without a developer.</li>
+            <li>Usage and cost per customer, so pricing is based on figures rather than a guess.</li>
+            <li>An internal runbook: what breaks, how it shows, what to do.</li>
+            <li>The customer user guide linked from the dashboard itself.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="hosting">
+    <h2>Requirement 4 — where it runs</h2>
+    <p class="sectionnote">
+      Three realistic options. The system needs a US IP address (DealerRater and
+      Carfax refuse other traffic — today that is worked around with a VPN), a real
+      browser for the scraping fallback, a database, and no dependency on anyone's
+      laptop.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Option</th><th>Rough cost</th><th>Browser scraping</th><th>Admin burden</th><th>Fits when</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="pick">US VPS<br><span class="mono" style="font-size:.8rem">Hetzner · DigitalOcean</span></td>
+            <td>$10–25 / mo</td>
+            <td class="yes">Straightforward</td>
+            <td>You patch and back up</td>
+            <td>Up to a few hundred customers. Cheapest and least constrained.</td>
+          </tr>
+          <tr>
+            <td class="pick">PaaS<br><span class="mono" style="font-size:.8rem">Railway · Render</span></td>
+            <td>$25–80 / mo, rising per customer</td>
+            <td class="no">Awkward and costly</td>
+            <td>Almost none</td>
+            <td>You want it live this week and will revisit before real volume.</td>
+          </tr>
+          <tr>
+            <td class="pick">AWS / GCP</td>
+            <td>$80+ / mo</td>
+            <td class="yes">Solvable, with work</td>
+            <td>Highest</td>
+            <td>Thousands of customers are genuinely near, not aspirational.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout good">
+      <span class="k">Recommendation</span>
+      <p>
+        <strong>A US VPS.</strong> It is the only option that is cheap, removes the
+        VPN dependency, and leaves browser scraping workable while the GBP API is
+        still blocked. Postgres runs on the same box at this size and moves to a
+        managed service later without changing the application. Revisit at roughly
+        200 customers or the first time one box stops keeping up — whichever comes
+        first.
+      </p>
+    </div>
+  </section>
+
+  <section id="sequence">
+    <h2>Sequence and honest timing</h2>
+    <p>
+      P0 through P3 is roughly <strong>three to four weeks</strong> of focused work
+      and produces a system that is genuinely multi-customer, safe to give logins
+      for, and does not lose work on restart. P5 adds a week and takes the laptop
+      out of the picture.
+    </p>
+    <p>
+      <strong>P4 is the one that decides the ceiling</strong>, and it is waiting on
+      an IT request rather than on development time. Until it clears, "thousands of
+      customers" is a design the code is ready for rather than a load it can carry.
+      Everything else can be built while waiting.
+    </p>
+    <p>
+      The soonest honest answer to "can we sell this" is <strong>after P2</strong>,
+      to a small number of customers, on a server. Selling before P2 means every
+      customer can read every other customer's reviews.
+    </p>
+  </section>
+
+  <section id="management">
+    <h2>Requirement 5 — how this gets run</h2>
+    <p>
+      Rhea owns the project: scope, sequence, and what ships. A suggestion for
+      keeping that concrete rather than implicit:
+    </p>
+    <ul>
+      <li><strong>One phase at a time</strong>, each with the deliverables above as its definition of done. No phase starts before the one before it is finished and demonstrated.</li>
+      <li><strong>A demo at the end of each phase</strong>, against real dealership data, not a test fixture. The demo is the sign-off.</li>
+      <li><strong>The blocked items get chased weekly.</strong> The GBP API, the mailbox and DNS are one request, and it sits on the critical path to launch.</li>
+      <li><strong>Changes to scope get written down here</strong>, so the plan stays the thing everyone is arguing with rather than a memory of a meeting.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>A3 Brands · Review Responder</span>
+    <span>Plan of 2 September 2026 · superseded by whatever replaces it</span>
+  </div>
+</footer>

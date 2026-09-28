@@ -1,0 +1,30 @@
+# Secrets. Never commit these: they hold the Gmail app password, the collector
+# API key, the dashboard login and the Google OAuth credentials.
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Customer data. Real reviews, reviewers' names, logins and drafts.
+data/
+review-collector/data/
+logs/
+review-collector/logs/
+*.db
+*.db-shm
+*.db-wal
+*.dump
+
+# The responder is its own repository:
+# https://github.com/a3brandsanalytics/google-reviews-manager
+google-reviews-manager/
+
+# Build and runtime junk
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.log

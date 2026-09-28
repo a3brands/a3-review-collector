@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>A3 Review Collector</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <form class="gate-card" id="gate-form">
+    <h1>A3 Review Collector</h1>
+    <p>Enter the collector API key to continue.</p>
+    <input id="gate-key" type="password" placeholder="API key" autocomplete="current-password" aria-label="API key">
+    <button id="gate-btn" type="submit" class="primary">Unlock</button>
+    <p id="gate-error" class="error" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+
+  <header class="topbar">
+    <div class="brand">
+      <h1>A3 Review Collector</h1>
+      <p class="sub" id="system-line">Checking&hellip;</p>
+    </div>
+    <div class="actions">
+      <button id="check-now" class="primary">Check&nbsp;Now</button>
+      <button id="refresh" title="Reload the dashboard (does not fetch from Google)">Refresh</button>
+      <button id="logout" class="ghost" title="Forget the API key on this device">Sign&nbsp;out</button>
+    </div>
+  </header>
+
+  <p id="banner" class="banner" hidden></p>
+
+  <!-- The one thing this page exists to answer: what needs a human? -->
+  <section class="needs" id="needs" aria-label="Needs attention"></section>
+
+  <section class="queue">
+    <div class="queue-head">
+      <h2 id="reviews-heading">Waiting for reply</h2>
+      <div class="controls">
+        <div class="segmented" role="group" aria-label="Which reviews">
+          <button id="tab-new" class="seg" type="button">Waiting</button>
+          <button id="tab-all" class="seg active" type="button">All</button>
+        </div>
+        <select id="filter-business" aria-label="Filter by dealership">
+          <option value="">Both dealerships</option>
+          <option value="bmw_fwb">BMW</option>
+          <option value="mb_fwb">Mercedes-Benz</option>
+        </select>
+        <select id="sort-by" aria-label="Sort reviews">
+          <option value="urgent">Most urgent first</option>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
+    </div>
+    <div id="reviews" class="reviews" aria-live="polite"></div>
+    <button id="load-more" class="load-more" hidden>Show more</button>
+  </section>
+
+  <details class="drawer" id="details-drawer">
+    <summary>System details</summary>
+
+    <h3>Dealerships</h3>
+    <div class="cards" id="businesses"></div>
+
+    <h3>Collection backends</h3>
+    <div class="cards" id="backends"></div>
+
+    <h3>Recent checks</h3>
+    <div id="checks" class="checks"></div>
+  </details>
+
+  <footer id="footer"></footer>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

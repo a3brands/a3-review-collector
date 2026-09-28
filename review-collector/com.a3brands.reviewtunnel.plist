@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Publishes the dashboard on a public HTTPS URL via a Cloudflare quick tunnel.
+
+  Runs the cloudflared binary DIRECTLY rather than through a shell script:
+  macOS TCC refuses to let a LaunchAgent execute a script living under
+  ~/Desktop ("Operation not permitted"), but exec'ing a binary is fine.
+
+  cloudflared prints its assigned hostname to the log below, and the collector
+  reads the most recent one from there when composing notification emails, so a
+  restart that changes the hostname needs no configuration change.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.a3brands.reviewtunnel</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/rhea/.local/bin/cloudflared</string>
+        <string>tunnel</string>
+        <string>--no-autoupdate</string>
+        <string>--url</string>
+        <string>http://127.0.0.1:8080</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/rhea/Desktop/responder separate tool/review-collector/logs/tunnel.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/rhea/Desktop/responder separate tool/review-collector/logs/tunnel.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
