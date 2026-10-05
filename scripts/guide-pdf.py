@@ -34,6 +34,9 @@ def render(source: pathlib.Path, out: pathlib.Path) -> None:
         # The webfonts come from Google and the page is unreadable in a fallback
         # face, so wait for them rather than racing the render.
         page.wait_for_timeout(1200)
+        # The questions are collapsed on screen. On paper every answer has to
+        # show, and print emulation does not fire the page's beforeprint hook.
+        page.evaluate("document.querySelectorAll('details').forEach(d => d.open = true)")
         page.emulate_media(media="print")
         out.parent.mkdir(parents=True, exist_ok=True)
         page.pdf(
