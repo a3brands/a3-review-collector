@@ -189,6 +189,10 @@ footer{color:var(--muted);font-size:12.5px;padding-bottom:44px}
   /* stacked, labelled rows instead of an unreadable 6-column table */
   .check-row{grid-template-columns:1fr;gap:2px;padding:11px 13px}
   .check-row .lbl{display:inline;margin-right:6px}
-  .drawer{border-radius:0;margin-left:-20px;margin-right:-20px;
-    padding-left:20px;padding-right:20px;border-left:none;border-right:none}
+  /* The negative margins here assumed a container with 20px of padding. On a
+     phone #app has none, so they pushed the drawer 20px past each edge and gave
+     the whole page a sideways scroll. Full width of the container instead. */
+  .drawer{border-radius:0;margin-left:0;margin-right:0;
+    padding-left:16px;padding-right:16px;border-left:none;border-right:none;
+    width:100%;max-width:100%;box-sizing:border-box}
 }

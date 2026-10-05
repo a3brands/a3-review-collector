@@ -163,3 +163,37 @@ def test_owner_reply_marker_is_stripped_if_it_leaks_through():
     assert "Response from the owner" not in text
     assert "Thank you for taking the time" not in text
     assert text.startswith("Great service!")
+
+
+# ---------------------------------------------------------------------------
+# listing_identity: review links need the listing's feature id, or Google opens
+# the review on a bare page with no dealership name.
+# ---------------------------------------------------------------------------
+from app.collector.parser import google_review_permalink, listing_identity  # noqa: E402
+
+MERIT_URL = (
+    "https://www.google.com/maps/place/Merit+Auto+Group/@30.313578,-81.5676933,17z/"
+    "data=!3m1!4b1!4m6!3m5!1s0x88e5b53fc3070bdf:0x80dea25b3b72720a!8m2!3d30.3135!4d-81.5650"
+    "!16s%2Fg%2F11fvgyzz_z"
+)
+
+
+def test_listing_identity_reads_feature_id_and_prefers_the_pin():
+    found = listing_identity(MERIT_URL)
+    assert found["feature_id"] == "0x88e5b53fc3070bdf:0x80dea25b3b72720a"
+    # The pin, not the viewport centre the map happened to be scrolled to.
+    assert (found["latitude"], found["longitude"]) == (30.3135, -81.5650)
+
+
+def test_listing_identity_returns_nothing_for_a_place_id_link():
+    found = listing_identity("https://www.google.com/maps/place/?q=place_id:ChIJ0XFsWkI")
+    assert found == {"feature_id": None, "latitude": None, "longitude": None}
+    assert listing_identity(None)["feature_id"] is None
+
+
+def test_permalink_built_from_the_listing_url_names_the_dealership():
+    found = listing_identity(MERIT_URL)
+    url = google_review_permalink("Ci9DQUlR", **found)
+    assert "0x0:0x0" not in url
+    assert url.endswith("!2m1!1s0x88e5b53fc3070bdf:0x80dea25b3b72720a?hl=en")
+    assert "/@30.3135,-81.565,17z/" in url

@@ -75,3 +75,36 @@ def to_review_row(
         processed=processed,
         processed_at=now if processed else None,
     )
+
+
+def rebuild_review_links(session, business: Business) -> int:
+    """Rewrite this dealership's stored review links that are not the right one.
+
+    A link is built once, when the review is first stored, and never again. So a
+    dealership whose listing id arrived late kept links that open Google with no
+    dealership name (`0x0:0x0`) forever. Run after every check, this repairs
+    them as soon as the id is known. Returns how many changed.
+    """
+    if not business.feature_id:
+        return 0
+    from sqlalchemy import or_
+
+    changed = 0
+    stale = session.query(Review).filter(
+        Review.business_id == business.id,
+        Review.review_id_is_native.is_(True),
+        or_(Review.review_url.is_(None),
+            ~Review.review_url.contains(business.feature_id)),
+    )
+    for review in stale:
+        native_id = review.review_id.split(":", 1)[1] if ":" in review.review_id else None
+        url = google_review_permalink(
+            native_id,
+            feature_id=business.feature_id,
+            latitude=business.latitude,
+            longitude=business.longitude,
+        )
+        if url and url != review.review_url:
+            review.review_url = url
+            changed += 1
+    return changed

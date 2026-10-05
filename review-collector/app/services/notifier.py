@@ -219,6 +219,9 @@ def build_message(
         ok = len([r for r in (results or []) if r.get("status") != "failed"])
         total_biz = len(results or [])
         headline = f"Daily summary - {new_total} new, {ok}/{total_biz} dealerships OK"
+        broken_links = (totals or {}).get("link_problems") or []
+        if broken_links:
+            headline = f"ALERT daily summary - review links broken for {len(broken_links)} dealership(s)"
         if failed:
             headline = f"ALERT daily summary - {len(failed)} dealership(s) not collecting"
     elif event == "failure":
@@ -289,6 +292,14 @@ def build_message(
             follow = (
                 f"{t.get('unprocessed_reviews', '?')} waiting for a reply. "
                 "If this message does not arrive tomorrow, the collector is not running."
+            )
+        broken_links = t.get("link_problems") or []
+        if broken_links:
+            names = ", ".join(p["business_name"] for p in broken_links)
+            follow += (
+                f" Review links for {names} open Google without the dealership's name. "
+                "Run scripts/repair_review_links.py --apply in review-collector, then "
+                "scripts/verify_review_links.py to confirm."
             )
     elif event == "failure":
         opening = f"Reviews could not be collected for {business or 'a dealership'}."

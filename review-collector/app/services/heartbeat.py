@@ -22,7 +22,7 @@ import datetime as dt
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy import func
 
@@ -131,6 +131,27 @@ def summarise(now: Optional[dt.datetime] = None) -> Dict:
     return {"results": results, "window_hours": 24}
 
 
+def link_problems() -> List[Dict]:
+    """Dealerships whose review links would open Google without their name.
+
+    Either no listing id is known for them, or some stored links still carry
+    `0x0:0x0`. Every check repairs the second on its own, so anything listed
+    here survived a repair and needs a person to look.
+    """
+    problems = []
+    with session_scope() as session:
+        for b in session.query(Business).filter_by(active=True).order_by(Business.name):
+            bare = (
+                session.query(func.count(Review.id))
+                .filter(Review.business_id == b.id, Review.review_url.contains("0x0:0x0"))
+                .scalar()
+            ) or 0
+            if bare or not b.feature_id:
+                problems.append({"business_name": b.name, "bare_links": bare,
+                                 "missing_listing_id": not b.feature_id})
+    return problems
+
+
 def send(trigger: str = "scheduled", now: Optional[dt.datetime] = None,
          settings: Optional[Settings] = None) -> Dict:
     """Send today's heartbeat and record that it went."""
@@ -138,10 +159,12 @@ def send(trigger: str = "scheduled", now: Optional[dt.datetime] = None,
     now = now or dt.datetime.now()
 
     summary = summarise()
+    totals = stats.global_stats()
+    totals["link_problems"] = link_problems()
     outcome = notifier.send_event(
         "heartbeat",
         results=summary["results"],
-        totals=stats.global_stats(),
+        totals=totals,
         reviews=stats.pending_reviews(5),
         settings=settings,
     )

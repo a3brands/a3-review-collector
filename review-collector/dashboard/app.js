@@ -233,8 +233,10 @@
 
         var s = data.scheduler;
         $("system-line").textContent =
-          (s.running ? "Checking both dealerships every " + s.interval_minutes + " min"
-                     : "Scheduler STOPPED") +
+          (s.running
+             ? "Checking " + ((data.businesses || []).length || "all") +
+               " dealerships every " + s.interval_minutes + " min"
+             : "Scheduler STOPPED") +
           " · next " + ago(s.next_check).replace(" ago", " from now") +
           " · " + data.totals.total_reviews_collected + " reviews collected";
 
@@ -319,7 +321,7 @@
   $("check-now").addEventListener("click", function () {
     var btn = this;
     btn.disabled = true; btn.textContent = "Checking…";
-    setBanner("Checking both dealerships now. This can take up to a minute.", "");
+    setBanner("Checking every dealership now. This can take a minute or two.", "");
     api("/api/admin/check-now", { method: "POST" })
       .then(function (res) {
         if (res.skipped) { setBanner(res.reason, ""); return load(); }

@@ -221,6 +221,35 @@ def google_review_permalink(
     )
 
 
+_FEATURE_ID = re.compile(r"!1s(0x[0-9a-f]+:0x[0-9a-f]+)")
+_PIN = re.compile(r"!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)")
+_VIEWPORT = re.compile(r"/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)")
+
+
+def listing_identity(url: Optional[str]) -> dict:
+    """The feature id and map position carried in a Google Maps listing URL.
+
+    Every /maps/place/Name/@lat,lng/data=...!1s0x..:0x..!3dlat!4dlng URL holds
+    both, so a dealership configured by pasting one never needs them typed in
+    by hand. Four of six dealerships were missing them, and every review link
+    they produced opened Google's bare page with no dealership name on it.
+
+    The pin (!3d/!4d) is preferred over the viewport centre (@), which is where
+    the map happened to be scrolled. Returns None for anything not present.
+    """
+    found = {"feature_id": None, "latitude": None, "longitude": None}
+    if not url:
+        return found
+    feature = _FEATURE_ID.search(url)
+    if feature:
+        found["feature_id"] = feature.group(1)
+    position = _PIN.search(url) or _VIEWPORT.search(url)
+    if position:
+        found["latitude"] = float(position.group(1))
+        found["longitude"] = float(position.group(2))
+    return found
+
+
 def parse_gbp_review(payload: dict, *, place_id: Optional[str] = None) -> dict:
     """Map one v4 GBP API review object onto RawReview keyword arguments."""
     reviewer = payload.get("reviewer") or {}

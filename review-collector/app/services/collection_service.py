@@ -22,7 +22,8 @@ from app.collector.base import (
     BackendUnavailable,
 )
 from app.collector.deduplication import partition_new
-from app.collector.normalizer import to_review_row
+from app.collector.normalizer import rebuild_review_links, to_review_row
+from app.collector.parser import listing_identity
 from app.collector.registry import get_backends
 from app.config import Settings, get_settings
 from app.database.database import session_scope, sync_businesses_from_config
@@ -324,6 +325,9 @@ class CollectionService:
             return self._record_failure(run_id, name, exc, start, retryable=True,
                                         previous_status=previous_status)
 
+        # Before storing, because the review links are built from it.
+        self._learn_listing_identity(business_id, result)
+
         # ---- store ----
         try:
             stored = self._store(business_id, key, result, first_sync=first_sync)
@@ -480,6 +484,43 @@ class CollectionService:
         raise last_error if last_error else BackendUnavailable("No backend produced a result.")
 
     # ------------------------------------------------------------------
+    def _learn_listing_identity(self, business_id: int, result: CollectionResult) -> None:
+        """Fill in the listing's feature id and position when they are missing.
+
+        Review links need both, or Google opens the review on a bare page with
+        no dealership name. They were typed in by hand for the first two
+        dealerships and never for the rest, so it is read from the listing URL
+        instead: the page that just loaded first, then whatever was configured.
+        Never overwrites a value that is already set.
+        """
+        with session_scope() as session:
+            business = session.get(Business, business_id)
+            if not business.feature_id or business.latitude is None:
+                for url in (result.listing_url, result.resolved_url,
+                            business.google_url, business.configured_url):
+                    found = listing_identity(url)
+                    if not found["feature_id"]:
+                        continue
+                    if not business.feature_id:
+                        business.feature_id = found["feature_id"]
+                    if business.latitude is None and found["latitude"] is not None:
+                        business.latitude = found["latitude"]
+                        business.longitude = found["longitude"]
+                    logger.info("%s: listing id %s read from its Google URL",
+                                business.name, business.feature_id)
+                    break
+            if not business.feature_id:
+                logger.warning(
+                    "%s: no Google listing id known, so its review links open without "
+                    "the dealership's name. Configure a full /maps/place/ URL for it.",
+                    business.name,
+                )
+                return
+            repaired = rebuild_review_links(session, business)
+            if repaired:
+                logger.info("%s: %d review link(s) rebuilt with the listing id",
+                            business.name, repaired)
+
     def _store(self, business_id: int, business_key: str, result: CollectionResult, *, first_sync: bool) -> Dict[str, int]:
         """Insert only genuinely new reviews. Idempotent."""
         mark_processed = (

@@ -59,7 +59,19 @@ def to_grm_review(review: Dict) -> Dict:
         "stars": review.get("rating"),
         "text": review.get("review_text") or "",
         "publishedAtDate": review.get("review_date"),
+        # Google's public listing gives ages, not dates: "2 months ago" becomes a
+        # timestamp of scrape-time-minus-two-months. Sent on so the manager can
+        # say "about 2 months ago" instead of inventing a day and an hour.
+        # Without it, 94% of BMW's review dates read as exact when 47 of them
+        # share a single millisecond.
+        #
+        # The derived timestamp stays usable as it ages: it is an origin, so
+        # now - review_date grows at the right rate and the age stays true.
+        "dateIsApproximate": bool(review.get("review_date_is_approximate")),
         "reviewUrl": review.get("review_url"),
+        # When the dealership answered. The manager could not report a reply
+        # time at all without this, because nothing else carries the date.
+        "ownerReplyDate": review.get("owner_reply_date"),
         # The manager shows the owner's reply when it has one. We can only
         # detect that a reply exists, not read its text, so send nothing rather
         # than an empty string that would render as a blank reply.

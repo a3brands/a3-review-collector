@@ -297,6 +297,7 @@ class GoogleMapsBackend(CollectorBackend):
         with sync_playwright() as pw:
             browser = None
             context = None
+            listing_url = None
             try:
                 browser = pw.chromium.launch(headless=self.settings.playwright_headless)
                 context_options = {
@@ -387,6 +388,7 @@ class GoogleMapsBackend(CollectorBackend):
                 else:
                     self._verify_listing(page, business, notes)
                 listing_stats = self._read_listing_stats(page, notes)
+                listing_url = page.url
 
                 # The cheap check. Google publishes the listing's total review
                 # count at the top of the page, before the review pane is even
@@ -411,6 +413,7 @@ class GoogleMapsBackend(CollectorBackend):
                         average_rating=listing_stats.get("totalScore"),
                         notes=notes,
                         skipped_unchanged=True,
+                        listing_url=listing_url,
                     )
 
                 self._open_reviews(page, business, notes)
@@ -451,6 +454,7 @@ class GoogleMapsBackend(CollectorBackend):
             notes=notes,
             resolved_url=resolved_url,
             resolved_name=resolved_name,
+            listing_url=listing_url,
         )
 
     # ------------------------------------------------------------------

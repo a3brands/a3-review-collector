@@ -33,7 +33,7 @@ export PATH := $(NODE_BIN):$(PATH)
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev collector collector-once collector-dry db-migrate test logs status doctor
+.PHONY: help install dev collector collector-once collector-dry verify-links db-migrate test logs status doctor
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -54,6 +54,9 @@ collector: ## Run the collector in the foreground (API + 15-minute scheduler)
 
 collector-once: ## One collection cycle, then exit. Stores, emails and syncs.
 	cd $(COLLECTOR) && .venv/bin/python scripts/collect_once.py
+
+verify-links: ## Open real review links on Google and check each shows its dealership
+	cd $(COLLECTOR) && .venv/bin/python scripts/verify_review_links.py
 
 collector-dry: ## One collection cycle that emails nobody and syncs nowhere
 	cd $(COLLECTOR) && .venv/bin/python scripts/collect_once.py --dry-run

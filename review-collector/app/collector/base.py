@@ -110,6 +110,9 @@ class CollectionResult:
     # it back so the dealership stops being a guess.
     resolved_url: Optional[str] = None
     resolved_name: Optional[str] = None
+    # The address the listing actually loaded at. A place_id link redirects to
+    # a full /maps/place/ URL carrying the feature id that review links need.
+    listing_url: Optional[str] = None
 
 
 # --------------------------------------------------------------------------
