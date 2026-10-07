@@ -67,6 +67,21 @@ def mark_sent(day: str) -> None:
     _write_state({"last_sent_day": day})
 
 
+# A heartbeat that fails to deliver is tried again on later cycles, up to this
+# many times a day. Marking it sent on the first failure lost the day's
+# heartbeat whenever the Mac woke before its network did.
+MAX_ATTEMPTS_PER_DAY = 4
+
+
+def _note_failed_attempt(day: str) -> int:
+    state = _read_state()
+    attempts = state.get("failed_attempts", {})
+    count = int(attempts.get(day, 0)) + 1 if isinstance(attempts, dict) else 1
+    state["failed_attempts"] = {day: count}
+    _write_state(state)
+    return count
+
+
 def is_due(now: Optional[dt.datetime] = None, settings: Optional[Settings] = None) -> bool:
     """True when today's heartbeat is past its hour and has not been sent."""
     settings = settings or get_settings()
@@ -167,10 +182,16 @@ def send(trigger: str = "scheduled", now: Optional[dt.datetime] = None,
         totals=totals,
         reviews=stats.pending_reviews(5),
         settings=settings,
+        blocking=True,
     )
-    # Marked regardless of the send result. A mail server that is refusing
-    # connections would otherwise have this retry every interval all day.
-    mark_sent(now.date().isoformat())
+    day = now.date().isoformat()
+    delivery_failed = not outcome.get("sent") and str(outcome.get("reason", "")).startswith("delivery failed")
+    if delivery_failed and _note_failed_attempt(day) < MAX_ATTEMPTS_PER_DAY:
+        logger.warning("Heartbeat (%s) not delivered; will try again next cycle", trigger)
+        return outcome
+    # Sent, deliberately not sent (disabled, rate limited), or out of attempts.
+    # A mail server refusing all day must not be retried every interval.
+    mark_sent(day)
     logger.info(
         "Heartbeat (%s): %d dealership(s), %d new in 24h",
         trigger,

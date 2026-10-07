@@ -88,7 +88,9 @@ class Settings(BaseSettings):
     # ---------------- Scheduling ----------------
     check_interval_minutes: int = Field(default=15, alias="CHECK_INTERVAL_MINUTES")
     scheduler_enabled: bool = Field(default=True, alias="SCHEDULER_ENABLED")
-    startup_check_delay_seconds: int = Field(default=20, alias="STARTUP_CHECK_DELAY_SECONDS")
+    # 3 minutes: a Mac waking from sleep has no network for the first minute or
+    # two, and a check (and its new-review email) run then simply fails.
+    startup_check_delay_seconds: int = Field(default=180, alias="STARTUP_CHECK_DELAY_SECONDS")
 
     # ---------------- Adaptive pacing ----------------
     # Checking every dealership every 15 minutes spends 96% of its effort
