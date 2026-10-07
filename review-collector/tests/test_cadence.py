@@ -227,6 +227,25 @@ class TestFullScan:
             plan = plan_for(session, b, settings())
         assert plan["full_scan"] is False
 
+    def test_a_recent_unanswered_review_forces_a_full_read(self, fresh_db):
+        # The fast path compares the headline count, which a dealership's reply
+        # does not change, so it would never notice the reply.
+        with session_scope() as session:
+            b = add_business(session)
+            add_reviews(session, b.id, 1)
+            add_check(session, b.id, minutes_ago=90, fast_path=False)
+            plan = plan_for(session, b, settings())
+        assert plan["full_scan"] is True
+
+    def test_once_answered_the_fast_path_returns(self, fresh_db):
+        with session_scope() as session:
+            b = add_business(session)
+            add_reviews(session, b.id, 1)
+            session.query(Review).update({Review.owner_replied: True})
+            add_check(session, b.id, minutes_ago=90, fast_path=False)
+            plan = plan_for(session, b, settings())
+        assert plan["full_scan"] is False
+
     def test_fast_checks_alone_never_satisfy_the_full_scan_clock(self, fresh_db):
         # A fast check reads a count and stops, so it cannot notice a review that
         # was edited or deleted without changing the total.

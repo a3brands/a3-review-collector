@@ -147,6 +147,23 @@ def plan_for(session, business: Business, settings: Optional[Settings] = None,
         or last_full.started_at is None
         or (now - last_full.started_at).total_seconds() / 3600.0 >= settings.full_scan_every_hours
     )
+    # A recent review still shown as unanswered: read the reviews on every
+    # check until the dealership's reply is seen. The shortcut only compares
+    # the headline count, which a reply does not change, so the dealership
+    # answering would go unnoticed for up to a day, and an approval email could
+    # go out for a review already answered (two BMW reviews on 2026-10-06).
+    if not full_scan:
+        recent_unanswered = (
+            session.query(Review.id)
+            .filter(
+                Review.business_id == business.id,
+                Review.review_id_is_native.is_(True),
+                Review.owner_replied.is_(False),
+                Review.detected_at >= now - dt.timedelta(days=7),
+            )
+            .first()
+        )
+        full_scan = recent_unanswered is not None
 
     return {
         "due": due,

@@ -307,8 +307,11 @@ def test_each_review_links_to_its_dealerships_google_profile(smtp_server, notify
     notifier.send_event("refresh", totals=TOTALS, reviews=with_profiles,
                         settings=notify_settings, blocking=True)
 
-    body = smtp_server.messages[0].get_payload(0).get_payload()
-    html = smtp_server.messages[0].get_payload(1).get_payload()
+    # Decoded the way a mail client decodes it. The raw payload is
+    # quoted-printable once any line is long, which writes "=" as "=3D" and
+    # wraps lines, so the URL is only intact after decoding.
+    body = smtp_server.messages[0].get_payload(0).get_payload(decode=True).decode()
+    html = smtp_server.messages[0].get_payload(1).get_payload(decode=True).decode()
     assert "https://www.google.com/maps/place/?q=place_id:ABC" in body
     assert "View Google Business Profile" in html
 

@@ -219,6 +219,11 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
     smtp_username: str = Field(default="", alias="SMTP_USERNAME")
     smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
+    # Google OAuth instead of an App Password, for accounts whose domain blocks
+    # 2-Step Verification. Set by scripts/connect_gmail_oauth.py at the project root.
+    gmail_oauth_client_id: str = Field(default="", alias="GMAIL_OAUTH_CLIENT_ID")
+    gmail_oauth_client_secret: str = Field(default="", alias="GMAIL_OAUTH_CLIENT_SECRET")
+    gmail_oauth_refresh_token: str = Field(default="", alias="GMAIL_OAUTH_REFRESH_TOKEN")
     # Gmail requires STARTTLS on 587 (or implicit TLS on 465). Only turn this
     # off for a plaintext relay on localhost.
     smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
@@ -298,7 +303,7 @@ class Settings(BaseSettings):
             return "SMTP_HOST is not set."
         if not self.smtp_username:
             return "SMTP_USERNAME is not set (your Gmail address)."
-        if not self.smtp_password:
+        if not self.smtp_password and not self.gmail_oauth_refresh_token:
             return (
                 "SMTP_PASSWORD is not set. With 2-Step Verification enabled this must be a "
                 "16-character Google App Password, not your account password."

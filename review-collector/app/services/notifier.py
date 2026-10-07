@@ -400,6 +400,40 @@ def _dashboard_button(url: str) -> str:
     )
 
 
+def _oauth_access_token(settings: Settings) -> str:
+    """Trade the stored refresh token for a short-lived Gmail access token."""
+    import json
+    import urllib.parse
+    import urllib.request
+
+    body = urllib.parse.urlencode({
+        "client_id": settings.gmail_oauth_client_id,
+        "client_secret": settings.gmail_oauth_client_secret,
+        "refresh_token": settings.gmail_oauth_refresh_token,
+        "grant_type": "refresh_token",
+    }).encode()
+    with urllib.request.urlopen(
+        urllib.request.Request("https://oauth2.googleapis.com/token", data=body),
+        timeout=settings.notify_timeout_seconds,
+    ) as response:
+        return json.load(response)["access_token"]
+
+
+def _oauth_login(server: smtplib.SMTP, settings: Settings) -> None:
+    """Sign in to Gmail with OAuth (XOAUTH2) instead of an App Password.
+
+    Used when the sending account's domain blocks the 2-Step Verification
+    that App Passwords require.
+    """
+    import base64
+
+    token = _oauth_access_token(settings)
+    raw = f"user={settings.smtp_username}\x01auth=Bearer {token}\x01\x01"
+    code, reply = server.docmd("AUTH", "XOAUTH2 " + base64.b64encode(raw.encode()).decode())
+    if code != 235:
+        raise smtplib.SMTPAuthenticationError(code, reply)
+
+
 def _send_sync(settings: Settings, message: EmailMessage) -> None:
     host = settings.smtp_host
     port = settings.smtp_port
@@ -418,7 +452,9 @@ def _send_sync(settings: Settings, message: EmailMessage) -> None:
                 if settings.smtp_use_tls and not use_implicit_tls:
                     server.starttls(context=context)
                     server.ehlo()
-                if settings.smtp_username:
+                if settings.smtp_username and settings.gmail_oauth_refresh_token:
+                    _oauth_login(server, settings)
+                elif settings.smtp_username:
                     server.login(settings.smtp_username, settings.smtp_password)
                 server.send_message(message)
             logger.info(
