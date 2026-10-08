@@ -29,10 +29,14 @@ class FakeManager(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
+        # Read the body before any reply. Closing a socket with unread request
+        # data makes Windows reset the connection (WinError 10053), so the
+        # client never sees the forced status.
+        raw = self.rfile.read(int(self.headers["Content-Length"]))
         if FakeManager.force_status:
             return self._json(FakeManager.force_status, {"ok": False, "error": "forced"})
 
-        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])) or b"{}")
+        body = json.loads(raw or b"{}")
         payload = body.get("payload")
         if not isinstance(payload, str):
             return self._json(400, {"ok": False, "error": "bad_envelope"})
