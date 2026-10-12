@@ -186,6 +186,10 @@ class Settings(BaseSettings):
     playwright_timezone: str = Field(default="America/Chicago", alias="PLAYWRIGHT_TIMEZONE")
     playwright_user_data_dir: str = Field(default="", alias="PLAYWRIGHT_USER_DATA_DIR")
     playwright_scroll_rounds: int = Field(default=40, alias="PLAYWRIGHT_SCROLL_ROUNDS")
+    # Scroll rounds with no new review before the list counts as finished. 3 is
+    # right for a routine check; a deep backfill needs more, as Google loads
+    # older pages slowly (a BMW read stopped at 1,180 of 2,209 on 2026-10-12).
+    playwright_scroll_patience: int = Field(default=3, alias="PLAYWRIGHT_SCROLL_PATIENCE")
     playwright_warm_session: bool = Field(default=True, alias="PLAYWRIGHT_WARM_SESSION")
     # Playwright's headless build advertises itself as "HeadlessChrome", and
     # Google serves that string a reviews-free listing almost always. Setting a

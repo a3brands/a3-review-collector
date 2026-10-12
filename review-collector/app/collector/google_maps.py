@@ -790,7 +790,7 @@ class GoogleMapsBackend(CollectorBackend):
             except Exception:
                 after = previous
             stagnant_rounds = stagnant_rounds + 1 if after <= previous else 0
-            if stagnant_rounds >= 3:
+            if stagnant_rounds >= max(1, self.settings.playwright_scroll_patience):
                 break  # Reached the end of the list.
 
         # Expand truncated review bodies so we store the full text.
