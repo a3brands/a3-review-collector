@@ -557,7 +557,19 @@ class GoogleMapsBackend(CollectorBackend):
                 if locator.count() > 0 and locator.is_visible():
                     locator.click(timeout=8000)
                     page.wait_for_timeout(3500)
-                    self._sort_by_newest(page, notes)
+                    sorted_ok = self._sort_by_newest(page, notes)
+                    # A failed sort used to leave the Overview panel showing
+                    # (its 5 "most relevant" preview cards), and the check read
+                    # only those: 126 checks did by 2026-10-12. If the full list
+                    # is gone, open the Reviews tab again before reading.
+                    if not sorted_ok and page.locator("div[data-review-id]").count() <= 5:
+                        try:
+                            if locator.count() > 0 and locator.is_visible():
+                                locator.click(timeout=8000)
+                                page.wait_for_timeout(3000)
+                                notes.append("Re-opened the reviews list after the sort attempt closed it.")
+                        except Exception:
+                            pass
                     return
             except Exception:
                 continue
@@ -583,73 +595,92 @@ class GoogleMapsBackend(CollectorBackend):
         )
 
     # ------------------------------------------------------------------
-    def _sort_by_newest(self, page, notes: List[str]) -> None:
-        """Order the list newest-first.
+    SORT_ATTEMPTS = 3
+
+    def _sort_by_newest(self, page, notes: List[str]) -> bool:
+        """Order the list newest-first. Returns True when it did.
 
         Google's default is "Most relevant", which can bury a brand-new review
         below older ones -- fatal for a *new review* collector.
 
-        Best effort: if anything goes wrong we make certain the menu is closed
-        before returning. A menu left open sits over the review pane and stops
-        it scrolling, which silently caps collection at the first page.
+        The menu sometimes fails to appear on the first click (the pane is
+        still settling), so it is tried up to SORT_ATTEMPTS times before
+        falling back. Best effort: if anything goes wrong we make certain the
+        menu is closed before returning. A menu left open sits over the review
+        pane and stops it scrolling, which silently caps collection at the
+        first page.
         """
-        menu_opened = False
         try:
             sort_button = page.locator(
                 "button[aria-label='Sort reviews' i], button[aria-label*='Sort' i]"
             ).first
             if sort_button.count() == 0:
                 notes.append("No sort control found; list left in Google's default order.")
-                return
+                return False
 
-            sort_button.click(timeout=6000)
-            menu_opened = True
-
-            # Wait for the menu to render rather than guessing at a delay.
-            try:
-                page.wait_for_selector("[role='menuitemradio'], [role='menuitem']", timeout=8000)
-            except Exception:
-                notes.append("Sort menu did not open in time; using Google's default order.")
-                return
-
-            items = page.locator("[role='menuitemradio'], [role='menuitem']")
-            labels = []
-            for index in range(items.count()):
-                item = items.nth(index)
+            labels: List[str] = []
+            for attempt in range(1, self.SORT_ATTEMPTS + 1):
                 try:
-                    label = (item.inner_text() or "").strip()
+                    sort_button.click(timeout=6000)
+                    # Wait for the menu to render rather than guessing at a delay.
+                    page.wait_for_selector("[role='menuitemradio'], [role='menuitem']", timeout=8000)
                 except Exception:
-                    continue
-                labels.append(label)
-                if "newest" in label.lower():
-                    item.click(timeout=5000)
-                    menu_opened = False
-                    page.wait_for_timeout(4000)
-                    return
+                    if attempt < self.SORT_ATTEMPTS:
+                        self._dismiss_menu(page)
+                        page.wait_for_timeout(1500 * attempt)
+                        continue
+                    notes.append(
+                        f"Sort menu did not open in time ({self.SORT_ATTEMPTS} tries); "
+                        "using Google's default order."
+                    )
+                    return False
+
+                items = page.locator("[role='menuitemradio'], [role='menuitem']")
+                labels = []
+                for index in range(items.count()):
+                    item = items.nth(index)
+                    try:
+                        label = (item.inner_text() or "").strip()
+                    except Exception:
+                        continue
+                    labels.append(label)
+                    if "newest" in label.lower():
+                        item.click(timeout=5000)
+                        page.wait_for_timeout(4000)
+                        if attempt > 1:
+                            notes.append(f"Sorted by newest on try {attempt}.")
+                        return True
+                break
 
             notes.append(
                 f"Sort menu had no 'Newest' option (saw: {labels or 'nothing'}); "
                 "using Google's default order."
             )
+            return False
         except Exception as exc:
             notes.append(f"Could not sort by newest ({exc}); using Google's default order.")
+            return False
         finally:
-            # Unconditionally, not just when menu_opened is True. A click that
-            # times out on "waiting for scheduled navigations to finish" has
-            # already opened the menu, and the exception fires before
-            # menu_opened is set -- so the flag reads False while a menu is
-            # sitting on screen. That menu covers the review pane, scrolling
-            # does nothing, and collection silently caps at the first page
-            # (~20 reviews) with no error. This is safe and cheap either way:
-            # _dismiss_menu returns as soon as it sees no menu.
+            # Always checked: a click that times out on "waiting for scheduled
+            # navigations to finish" may already have opened the menu, and a
+            # menu left on screen covers the review pane, so scrolling does
+            # nothing and collection silently caps at the first page. Safe
+            # either way: _dismiss_menu does nothing unless a menu is showing.
             self._dismiss_menu(page)
 
     # ------------------------------------------------------------------
     @staticmethod
     def _dismiss_menu(page) -> None:
-        """Close any open menu so it cannot block scrolling of the review pane."""
+        """Close any open menu so it cannot block scrolling of the review pane.
+
+        Only when a menu is actually showing. An Escape with no menu open closes
+        the reviews list itself and returns to the Overview panel, whose 5
+        preview cards were then read as the whole check.
+        """
         for attempt in (1, 2):
             try:
+                if page.locator("[role='menuitemradio'], [role='menuitem']").count() == 0:
+                    return
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(500)
                 if page.locator("[role='menuitemradio'], [role='menuitem']").count() == 0:
