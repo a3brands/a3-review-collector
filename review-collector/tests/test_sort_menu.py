@@ -18,6 +18,8 @@ class FakeLocator:
         return self
 
     def count(self):
+        if self.selector == GoogleMapsBackend.SIGNIN_PROMPT_DISMISS:
+            return 1 if self.page.signin_prompt else 0
         if self.selector == MENU:
             return 3 if self.page.menu_open else 0
         if "Sort" in self.selector:
@@ -32,8 +34,16 @@ class FakeLocator:
         return True
 
     def click(self, timeout=None):
+        if self.selector == GoogleMapsBackend.SIGNIN_PROMPT_DISMISS:
+            self.page.signin_prompt = False
+            return
+        if self.page.signin_prompt:
+            return  # the pop-up covers the page; the click lands on it
         if "Sort" in self.selector:
             self.page.sort_clicks += 1
+            if self.page.limited:
+                self.page.signin_prompt = True  # Google gates sorting behind sign-in
+                return
             if self.page.sort_clicks >= self.page.menu_opens_on_click:
                 self.page.menu_open = True
         elif "Reviews" in self.selector or "moreReviews" in self.selector:
@@ -75,6 +85,8 @@ class FakePage:
         self.sort_clicks = self.tab_clicks = self.escapes = 0
         self.cards = 20
         self.sorted_newest = False
+        self.signin_prompt = False
+        self.limited = False
         self.keyboard = FakeKeyboard(self)
         self.mouse = type("M", (), {"click": lambda *a, **k: None})()
 
@@ -140,3 +152,55 @@ def test_open_reviews_reopens_the_list_if_a_failed_sort_left_the_overview():
     b._open_reviews(page, type("B", (), {"name": "BMW"})(), notes)
     assert page.tab_clicks == 2 and page.cards == 20
     assert "Re-opened the reviews list after the sort attempt closed it." in notes
+
+
+def test_googles_sign_in_pop_up_is_dismissed_so_the_sort_can_open():
+    page, notes = FakePage(menu_opens_on_click=1), []
+    page.signin_prompt = True
+    assert backend()._sort_by_newest(page, notes) is True
+    assert page.sorted_newest and not page.signin_prompt
+    assert notes == ["Closed Google's sign-in prompt."]
+
+
+def test_a_limited_listing_stops_after_one_click_and_says_why():
+    page, notes = FakePage(), []
+    page.limited = True
+    assert backend()._sort_by_newest(page, notes) is False
+    assert page.sort_clicks == 1 and not page.signin_prompt and page.cards == 20
+    assert GoogleMapsBackend.SORT_GATED_NOTE in notes
+
+
+class _Result:
+    def __init__(self, n, gated):
+        self.reviews = list(range(n))
+        self.notes = [GoogleMapsBackend.SORT_GATED_NOTE] if gated else []
+
+
+def _collect_with(results, monkeypatch):
+    import app.collector.google_maps as gm
+    monkeypatch.setattr(gm.time, "sleep", lambda s: None)
+    b = backend()
+    calls = iter(results)
+    b._collect_attempt = lambda *a, **k: next(calls)
+    return b.collect(object(), 20)
+
+
+def test_a_limited_first_load_is_loaded_again(monkeypatch):
+    res = _collect_with([_Result(5, True), _Result(20, False)], monkeypatch)
+    assert len(res.reviews) == 20
+    assert res.notes[0].startswith("An earlier page load was a limited listing")
+
+
+def test_a_third_load_is_tried_when_the_second_is_limited_too(monkeypatch):
+    res = _collect_with([_Result(5, True), _Result(5, True), _Result(20, False)], monkeypatch)
+    assert len(res.reviews) == 20
+
+
+def test_three_limited_loads_keep_the_first_and_stop(monkeypatch):
+    res = _collect_with([_Result(5, True), _Result(5, True), _Result(5, True)], monkeypatch)
+    assert len(res.reviews) == 5 and res.notes.count("Another page load was limited too.") == 2
+
+
+def test_a_full_first_load_is_not_repeated(monkeypatch):
+    res = _collect_with([_Result(20, False)], monkeypatch)
+    assert len(res.reviews) == 20

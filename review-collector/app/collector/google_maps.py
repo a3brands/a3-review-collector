@@ -45,6 +45,7 @@ from __future__ import annotations
 import concurrent.futures
 import logging
 import re
+import time
 import urllib.parse
 from typing import List, Optional
 
@@ -282,8 +283,40 @@ class GoogleMapsBackend(CollectorBackend):
         )
 
     # ------------------------------------------------------------------
+    # Some signed-out sessions get a limited listing: about half the review
+    # cards, and the Sort button answers with "Sign-in to get the best of
+    # Google Maps" instead of its menu. Seen on 2026-10-12 in roughly one
+    # Mercedes check in three. Another session is usually a full one, so a check
+    # that lands on a limited one loads the page once more -- an ordinary
+    # reload, never a sign-in -- and keeps whichever read more.
+    SORT_GATED_NOTE = (
+        "Google answered the sort with a sign-in prompt (a limited signed-out "
+        "listing); using its default order."
+    )
+    LIMITED_RETRY_PAUSE_MS = 8000
+    LIMITED_RELOADS = 2
+
     def collect(self, business, limit: int,
                 known_review_count: Optional[int] = None) -> CollectionResult:
+        best = self._collect_attempt(business, limit, known_review_count)
+        for _ in range(self.LIMITED_RELOADS):
+            if self.SORT_GATED_NOTE not in best.notes:
+                break
+            time.sleep(self.LIMITED_RETRY_PAUSE_MS / 1000)
+            try:
+                again = self._collect_attempt(business, limit, known_review_count)
+            except Exception as exc:  # the read we have stands
+                best.notes.append(f"Another page load failed ({exc}); kept the earlier read.")
+                break
+            if self.SORT_GATED_NOTE in again.notes and len(again.reviews) <= len(best.reviews):
+                best.notes.append("Another page load was limited too.")
+                continue
+            again.notes.insert(0, "An earlier page load was a limited listing; loaded it again.")
+            best = again
+        return best
+
+    def _collect_attempt(self, business, limit: int,
+                         known_review_count: Optional[int] = None) -> CollectionResult:
         from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import TimeoutError as PlaywrightTimeout
         from playwright.sync_api import sync_playwright
@@ -570,6 +603,9 @@ class GoogleMapsBackend(CollectorBackend):
                                 notes.append("Re-opened the reviews list after the sort attempt closed it.")
                         except Exception:
                             pass
+                    # The sign-in pop-up can also arrive after sorting, and it
+                    # stops the pane scrolling just as surely.
+                    self._dismiss_signin_prompt(page, notes)
                     return
             except Exception:
                 continue
@@ -620,11 +656,15 @@ class GoogleMapsBackend(CollectorBackend):
 
             labels: List[str] = []
             for attempt in range(1, self.SORT_ATTEMPTS + 1):
+                self._dismiss_signin_prompt(page, notes)
                 try:
                     sort_button.click(timeout=6000)
                     # Wait for the menu to render rather than guessing at a delay.
                     page.wait_for_selector("[role='menuitemradio'], [role='menuitem']", timeout=8000)
                 except Exception:
+                    if self._dismiss_signin_prompt(page, notes):
+                        notes.append(self.SORT_GATED_NOTE)
+                        return False
                     if attempt < self.SORT_ATTEMPTS:
                         self._dismiss_menu(page)
                         page.wait_for_timeout(1500 * attempt)
@@ -669,6 +709,31 @@ class GoogleMapsBackend(CollectorBackend):
             self._dismiss_menu(page)
 
     # ------------------------------------------------------------------
+    # <button jsaction="pane.<id>.dismiss"><div><span>Dismiss</span>... -- the
+    # id part changes between Google releases, the ".dismiss" end has not.
+    SIGNIN_PROMPT_DISMISS = "button[jsaction$='.dismiss']"
+
+    @classmethod
+    def _dismiss_signin_prompt(cls, page, notes: List[str]) -> bool:
+        """Close Google's "Sign-in to get the best of Google Maps" pop-up.
+
+        It sits over the whole page, so the sort button and the review pane
+        stop responding: on 2026-10-12 it was why Mercedes' sort menu "did not
+        open" and the check read 5 cards. Its own Dismiss button closes it, as
+        a person would. Never signs in.
+        """
+        try:
+            button = page.locator(cls.SIGNIN_PROMPT_DISMISS).first
+            if button.count() > 0 and button.is_visible():
+                button.click(timeout=3000)
+                page.wait_for_timeout(800)
+                if "Closed Google's sign-in prompt." not in notes:
+                    notes.append("Closed Google's sign-in prompt.")
+                return True
+        except Exception:
+            pass
+        return False
+
     @staticmethod
     def _dismiss_menu(page) -> None:
         """Close any open menu so it cannot block scrolling of the review pane.
