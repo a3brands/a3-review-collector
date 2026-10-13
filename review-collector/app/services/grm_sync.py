@@ -68,6 +68,12 @@ def to_grm_review(review: Dict) -> Dict:
         # The derived timestamp stays usable as it ages: it is an origin, so
         # now - review_date grows at the right rate and the age stays true.
         "dateIsApproximate": bool(review.get("review_date_is_approximate")),
+        # When the collector first saw the review. A review seen minutes after it
+        # was posted ("2 hours ago") has a true day even though its date came
+        # from an age; the manager's monthly report uses this to tell those
+        # apart from "a year ago". Backfilled history carries detected_at equal
+        # to review_date, which the manager reads as "estimated".
+        "detectedAt": review.get("detected_at"),
         "reviewUrl": review.get("review_url"),
         # When the dealership answered. The manager could not report a reply
         # time at all without this, because nothing else carries the date.

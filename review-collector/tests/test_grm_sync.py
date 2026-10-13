@@ -118,6 +118,7 @@ def test_fields_match_what_review_store_normalises(manager, grm_settings):
     assert item["name"] == "Jane Doe"             # -> reviewer.displayName
     assert item["text"] == "Great service."       # -> comment
     assert item["publishedAtDate"]                # -> createTime
+    assert "detectedAt" in item                   # -> report day accuracy
     assert item["reviewId"] == "ChZDSUhN"         # -> platformReviewId, used by a3-sync
 
 
