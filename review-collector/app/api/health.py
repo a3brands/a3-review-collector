@@ -22,6 +22,7 @@ import datetime as dt
 from fastapi import APIRouter
 from sqlalchemy import text
 
+from app.config import get_settings
 from app.database.database import session_scope
 from app.scheduler.scheduler import get_scheduler
 from app.services import stats
@@ -94,8 +95,14 @@ def health():
         if b["last_successful_check"] is None and b["name"] not in onboarding
     ]
 
-    if not database_ok or not scheduler_status["running"]:
+    # Switched off on purpose (SCHEDULER_ENABLED=false; since 2026-10-29 the
+    # manager reads Google through the Business Profile API): not a fault.
+    paused = not scheduler_status["running"] and not get_settings().scheduler_enabled
+
+    if not database_ok or (not scheduler_status["running"] and not paused):
         status = "error"
+    elif paused:
+        status = "ok"
     elif not active:
         status = "degraded"
     elif failing or never_succeeded:
@@ -106,6 +113,8 @@ def health():
     detail = None
     if not database_ok:
         detail = "Database is unreachable."
+    elif paused:
+        detail = "Automatic checks are switched off (SCHEDULER_ENABLED=false)."
     elif not scheduler_status["running"]:
         detail = "Scheduler is not running; no automatic checks will happen."
     elif not active:

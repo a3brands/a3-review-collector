@@ -197,14 +197,33 @@ def test_health_reports_degraded_when_collection_is_failing(client, service, stu
         reset_scheduler()
 
 
-def test_health_reports_error_when_the_scheduler_is_stopped(client):
+def test_health_reports_error_when_the_scheduler_is_stopped(client, monkeypatch):
+    from app.config import get_settings
     from app.scheduler.scheduler import get_scheduler, reset_scheduler
 
+    # Meant to run (the default), but not running: a fault.
+    monkeypatch.setattr(get_settings(), "scheduler_enabled", True)
     reset_scheduler()
     get_scheduler().stop()
     body = client.get("/health").json()
     assert body["status"] == "error"
     assert "Scheduler is not running" in body["detail"]
+    reset_scheduler()
+
+
+def test_health_is_ok_when_checks_are_switched_off_on_purpose(client, monkeypatch):
+    """2026-10-29: Google is read by the manager's Business Profile API, so the
+    collector's checks are switched off. That must not read as a fault, or the
+    watchdog restarts it every ten minutes."""
+    from app.config import get_settings
+    from app.scheduler.scheduler import get_scheduler, reset_scheduler
+
+    monkeypatch.setattr(get_settings(), "scheduler_enabled", False)
+    reset_scheduler()
+    get_scheduler().stop()
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    assert "switched off" in body["detail"]
     reset_scheduler()
 
 
